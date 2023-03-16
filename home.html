@@ -28,27 +28,28 @@
             window.innerWidth /
             window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
-        renderer.setSize(window.innerWidth,
-            window.innerHeight);
-        document.body.appendChild(
-            renderer.domElement);
-        // Our Javascript will go here.
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor('grey');
+        document.body.appendChild(renderer.domElement);
 
         const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
-        const material = new THREE.MeshPhongMaterial({ color: 0xffff00 , viewframe: false,});
+        const material = new THREE.MeshPhongMaterial({ color: 0x00ff22, });
         const torusKnot = new THREE.Mesh(geometry, material);
         scene.add(torusKnot);
-        
+
+
 
         const axesHelper = new THREE.AxesHelper(5);
         scene.add(axesHelper);
 
         const controls = new OrbitControls(camera, renderer.domElement);
 
-        const light = new THREE.DirectionalLight();
-
-        const helper = new THREE.DirectionalLightHelper( light, 5 );
-        scene.add( helper );
+        const light = new THREE.DirectionalLight(0xffffff, 0.7);
+            new THREE.AmbientLight(0x404040); // soft white light
+        scene.add(light);
+        const helper = new THREE.AmbientLight(light, 5);
+            new THREE.DirectionalLightHelper(light, 5);
+        scene.add(helper);
 
         //controls.update() must be called after any manual changes to the camera's transform
         camera.position.set(0, 20, 100);
@@ -78,6 +79,13 @@
             camera.updateProjectionMatrix();
 
             renderer.setSize(window.innerWidth, window.innerHeight);
+            mesh.position.x = 0
+            mesh.scale.set(2, 2, 2)
+            mesh.rotation.y = Math.PI / 4
+
+            camera.lookAt(axesHelper.position);
+            camera.lookAt(new THREE.Vector3(0, 0, 0));
+
 
             controls.update();
 
