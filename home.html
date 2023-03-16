@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>My first three.js app</title>
+    <style>
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://unpkg.com/three/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three/examples/jsm/"
+          }
+        }
+      </script>
+    <script type="module">
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import * as THREE from 'https://unpkg.com/three/build/three.module.js'
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75,
+            window.innerWidth /
+            window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth,
+            window.innerHeight);
+        document.body.appendChild(
+            renderer.domElement);
+        // Our Javascript will go here.
+
+        const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
+        const material = new THREE.MeshPhongMaterial({ color: 0xffff00 , viewframe: false,});
+        const torusKnot = new THREE.Mesh(geometry, material);
+        scene.add(torusKnot);
+        
+
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+
+        const light = new THREE.DirectionalLight();
+
+        const helper = new THREE.DirectionalLightHelper( light, 5 );
+        scene.add( helper );
+
+        //controls.update() must be called after any manual changes to the camera's transform
+        camera.position.set(0, 20, 100);
+        controls.update();
+
+
+        camera.position.z = 5;
+        camera.position.y = 2;
+        camera.position.x = 2;
+
+
+        camera.lookAt(axesHelper.position);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+            // cube.rotation.x += 0.00;
+            // cube.rotation.y += 0.05;
+            // cube.rotation.z += 0.05;
+            window.addEventListener('resize', onWindowResize);
+
+        }
+
+        function onWindowResize() {
+
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            controls.update();
+
+        }
+        animate();
+    </script>
+</body>
+
+</html>
