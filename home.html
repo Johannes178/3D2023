@@ -23,20 +23,23 @@
     <script type="module">
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import * as THREE from 'https://unpkg.com/three/build/three.module.js'
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75,
             window.innerWidth /
             window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
+
+			const loader = new GLTFLoader().setPath( 'models/' );
+				loader.load( 'bird ja barrel.glb', function ( gltf ) {
+				scene.add( gltf.scene );
+			} );
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setClearColor('grey');
         document.body.appendChild(renderer.domElement);
 
-        const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
         const material = new THREE.MeshPhongMaterial({ color: 0x00ff22, });
-        const torusKnot = new THREE.Mesh(geometry, material);
-        scene.add(torusKnot);
-
 
 
         const axesHelper = new THREE.AxesHelper(5);
@@ -95,3 +98,4 @@
 </body>
 
 </html>
+
