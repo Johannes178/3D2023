@@ -24,16 +24,26 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import * as THREE from 'https://unpkg.com/three/build/three.module.js'
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js'
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75,
             window.innerWidth /
             window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
+        renderer.xr.enabled = true;
+
+        new RGBELoader().setPath('hdr/').load('burnt_warehouse_4k.hdr')
+        function texture() {
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            scene.background = texture;
+            scene.environment = texture;
+        }
 
 			const loader = new GLTFLoader().setPath( 'models/' );
-				loader.load( 'bird ja barrel.glb', function ( gltf ) {
-				scene.add( gltf.scene );
+				loader.load( 'landscape.glb', function ( gltf ) {
+				scene.add(landscape);
 			} );
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setClearColor('grey');
@@ -44,6 +54,8 @@
 
         const axesHelper = new THREE.AxesHelper(5);
         scene.add(axesHelper);
+
+        document.body.appendChild( VRButton.createButton( renderer ) );
 
         const controls = new OrbitControls(camera, renderer.domElement);
 
@@ -91,8 +103,12 @@
 
 
             controls.update();
-
         }
+        renderer.setAnimationLoop(function () {
+            controls.update();
+            renderer.render(scene, camera);
+        });
+        
         animate();
     </script>
 </body>
