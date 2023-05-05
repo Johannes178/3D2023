@@ -1,110 +1,327 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<meta charset="utf-8">
-		<title>My first three.js app</title>
-		<style>
-			body { margin: 0; }
-		</style>
-	</head>
-	<body>
-		<script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+  <head>
+    <meta charset="utf-8" />
+    <title>My first three.js app</title>
+    <style>
+      body {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script
+      async
+      src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"
+    ></script>
 
-		<script type="importmap">
-		{
-			"imports": {
-			"three": "https://unpkg.com/three/build/three.module.js",
-			"three/addons/": "https://unpkg.com/three/examples/jsm/"
-			}
-		}
-		</script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three/examples/jsm/"
+        }
+      }
+    </script>
 
-		<script type="module">
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+      import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
+      import { VRButton } from "three/addons/webxr/VRButton.js";
+      import { XRControllerModelFactory } from "three/addons/webxr/XRControllerModelFactory.js";
 
-		import * as THREE from 'three';
-		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-		import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-		import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-		import { VRButton } from 'three/addons/webxr/VRButton.js';
+      let controller1, controller2;
+      let controllerGrip1, controllerGrip2;
+      let raycaster;
+      const intersected = [];
+      const tempMatrix = new THREE.Matrix4();
+      let group;
+      let teleportgroup;
+      let marker, baseReferenceSpace;
+      let INTERSECTION;
+      let mixer;
+      const clock = new THREE.Clock();
 
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        100
+      );
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor("rgb(52, 192, 235, 235)");
+      document.body.appendChild(renderer.domElement);
+      document.body.appendChild(VRButton.createButton(renderer));
+      renderer.xr.enabled = true;
 
-		const scene = new THREE.Scene();
-			const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-			const renderer = new THREE.WebGLRenderer();
-			renderer.setSize( window.innerWidth, window.innerHeight );
-			renderer.setClearColor('rgb(52, 192, 235, 235)');
-			document.body.appendChild( renderer.domElement );
-			document.body.appendChild( VRButton.createButton( renderer ) );
-			renderer.xr.enabled = true;
+      renderer.toneMapping = THREE.LinearToneMapping;
+      renderer.outputColorSpace;
 
-			renderer.toneMapping = THREE.LinearToneMapping;
- 			renderer.outputEncoding = THREE.sRGBEncoding;
+      group = new THREE.Group();
+      scene.add(group);
 
-			// const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-			// const material = new THREE.MeshPhongMaterial( { 
-			// 	color: 0x00ff00, 
-			// 	wireframe: false
-			// } );
-			// const cube = new THREE.Mesh( geometry, material );
-			// scene.add( cube );
+      teleportgroup = new THREE.Group();
+      scene.add(teleportgroup);
 
-			const directionalLight = new THREE.DirectionalLight( 0xFFFFFF, 5 );
-			scene.add(directionalLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+      directionalLight.castShadow = true;
+      directionalLight.shadow.camera.top = 3;
+      directionalLight.shadow.camera.bottom = -3;
+      directionalLight.shadow.camera.right = 3;
+      directionalLight.shadow.camera.left = -3;
+      directionalLight.shadow.mapSize.set(4096, 4096);
+      scene.add(directionalLight);
 
-			const loader = new GLTFLoader().setPath( 'models/' );
-				loader.load( 'landscape.glb', function ( gltf ) {
-				scene.add( gltf.scene );
-                
-			} );
+      marker = new THREE.Mesh(
+        new THREE.CircleGeometry(0.25, 32).rotateX(-Math.PI / 2),
+        new THREE.MeshBasicMaterial({ color: 0x808080 })
+      );
+      scene.add(marker);
+      new RGBELoader()
+        .setPath("hdr/")
+        .load("burnt_warehouse_4k.hdr", function (texture) {
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+          scene.background = texture;
+          scene.environment = texture;
+          const loader = new GLTFLoader().setPath("models/");
+          loader.load("landscape.glb", function (gltf) {
+            gltf.scene.position.y = 1;
+            gltf.scene.scale.set(3, 3, 3);
 
-			new RGBELoader().setPath('hdr/').load('burnt_warehouse_4k.hdr', function (texture)
-			{
-			texture.mapping = THREE.EquirectangularReflectionMapping;
-			scene.background = texture;
-			scene.environment = texture;
-			// model
-			const loader = new GLTFLoader().setPath( 'models/' );
-				loader.load( 'landscape.glb', function ( gltf ) {
-				scene.add( gltf.scene );
-			} );
-			});
+            teleportgroup.add(gltf.scene);
+          });
+        });
+      const loader2 = new GLTFLoader().setPath("models/");
+      loader2.load("barrel.gltf", function (gltf) {
+        gltf.scene.scale.set(0.1, 0.1, 0.1);
 
-		
+        gltf.scene.position.y = 0.6;
+        gltf.scene.position.x = -2;
+        gltf.scene.position.z = -2;
+        group.add(gltf.scene);
+      });
+      const loader3 = new GLTFLoader().setPath("models/");
+      loader3.load("bird.gltf", function (gltf) {
+        scene.add(gltf.scene);
 
-			// const barrel = new GLTFLoader().setPath( 'models/' );
-			// 	loader.load( 'barrel.gltf', function ( gltf ) {
-			// 	scene.add( gltf.scene );
-			// } );
+        mixer = new THREE.AnimationMixer(gltf.scene);
 
-			const axesHelper = new THREE.AxesHelper( 5 );
-			scene.add( axesHelper );
+        const clips = gltf.animations;
+        const clip = THREE.AnimationClip.findByName(clips, "Action");
+        console.log(clip);
+        const action = mixer.clipAction(clip);
 
-			const controls = new OrbitControls( camera, renderer.domElement );
+        scene.add(gltf.scene);
+      });
 
-			controls.minDistance = 1;
-			controls.maxDistance = 50;
+      const axesHelper = new THREE.AxesHelper(5);
+      scene.add(axesHelper);
 
-			camera.position.z = 5;
-			camera.position.y = 2;
-			camera.position.x = 2
-			controls.update();
+      initVR();
 
-			camera.lookAt(axesHelper.position);
+      function initVR() {
+        document.body.appendChild(VRButton.createButton(renderer));
+        renderer.xr.enabled = true;
+        renderer.xr.addEventListener(
+          "sessionstart",
+          () => (baseReferenceSpace = renderer.xr.getReferenceSpace())
+        );
 
-			window.addEventListener('resize', onWindowResize);
+        controller1 = renderer.xr.getController(0);
+        controller1.addEventListener("selectstart", onSelectStart);
+        controller1.addEventListener("selectend", onSelectEnd);
+        controller1.addEventListener("squeezestart", onSqueezeStart);
+        controller1.addEventListener("squeezeend", onSqueezeEnd);
+        scene.add(controller1);
 
-			function onWindowResize () {
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
+        controller2 = renderer.xr.getController(1);
+        controller2.addEventListener("selectstart", onSelectStart);
+        controller2.addEventListener("selectend", onSelectEnd);
+        controller2.addEventListener("squeezestart", onSqueezeStart);
+        controller2.addEventListener("squeezeend", onSqueezeEnd);
+        scene.add(controller2);
 
-				renderer.setSize(window.innerWidth, window.innerHeight);
-			}
+        const controllerModelFactory = new XRControllerModelFactory();
 
-			renderer.setAnimationLoop( function () {
-				controls.update();
-				renderer.render( scene, camera );
-			} );
+        controllerGrip1 = renderer.xr.getControllerGrip(0);
+        controllerGrip1.add(
+          controllerModelFactory.createControllerModel(controllerGrip1)
+        );
+        scene.add(controllerGrip1);
 
-		</script>
-	</body>
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(0, 0, -1),
+        ]);
+
+        const line = new THREE.Line(geometry);
+        line.name = "line";
+        line.scale.z = 5;
+
+        controller1.add(line.clone());
+        controller2.add(line.clone());
+
+        raycaster = new THREE.Raycaster();
+      }
+      function onSqueezeStart() {
+        this.userData.isSqueezing = true;
+        console.log("Controller squeeze started");
+      }
+      function onSqueezeEnd() {
+        this.userData.isSqueezing = false;
+        console.log("squeezeend");
+        if (INTERSECTION) {
+          const offsetPosition = {
+            x: -INTERSECTION.x,
+            y: -INTERSECTION.y,
+            z: -INTERSECTION.z,
+            w: 1,
+          };
+          const offsetRotation = new THREE.Quaternion();
+          const transform = new XRRigidTransform(
+            offsetPosition,
+            offsetRotation
+          );
+          const teleportSpaceOffset =
+            baseReferenceSpace.getOffsetReferenceSpace(transform);
+          renderer.xr.setReferenceSpace(teleportSpaceOffset);
+        }
+      }
+
+      function onSelectStart(event) {
+        const controller = event.target;
+
+        const intersections = getIntersections(controller);
+
+        if (intersections.length > 0) {
+          const intersection = intersections[0];
+
+          const object = intersection.object;
+          object.material.emissive.b = 1;
+          controller.attach(object);
+
+          controller.userData.selected = object;
+        }
+      }
+
+      function onSelectEnd(event) {
+        const controller = event.target;
+
+        if (controller.userData.selected !== undefined) {
+          const object = controller.userData.selected;
+          object.material.emissive.b = 0;
+          group.attach(object);
+
+          controller.userData.selected = undefined;
+        }
+      }
+
+      function getIntersections(controller) {
+        tempMatrix.identity().extractRotation(controller.matrixWorld);
+
+        raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+        raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+        return raycaster.intersectObjects(group.children, true);
+      }
+
+      function intersectObjects(controller) {
+        if (controller.userData.selected !== undefined) return;
+
+        const line = controller.getObjectByName("line");
+        const intersections = getIntersections(controller);
+
+        if (intersections.length > 0) {
+          const intersection = intersections[0];
+
+          const object = intersection.object;
+          object.material.emissive.r = 1;
+          intersected.push(object);
+
+          line.scale.z = intersection.distance;
+        } else {
+          line.scale.z = 5;
+        }
+      }
+
+      function cleanIntersected() {
+        while (intersected.length) {
+          const object = intersected.pop();
+          object.material.emissive.r = 0;
+        }
+      }
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+
+      controls.minDistance = 1;
+      controls.maxDistance = 50;
+
+      camera.position.z = 1;
+      camera.position.y = 2;
+      camera.position.x = 1;
+      controls.update();
+
+      camera.lookAt(axesHelper.position);
+
+      window.addEventListener("resize", onWindowResize);
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      renderer.setAnimationLoop(function () {
+        cleanIntersected();
+        intersectObjects(controller1);
+        intersectObjects(controller2);
+        controls.update();
+        moveMarker();
+
+        const delta = clock.getDelta();
+
+        if (typeof mixer !== "undefined") {
+          mixer.update(delta);
+        }
+
+        renderer.render(scene, camera);
+      });
+
+      function moveMarker() {
+        INTERSECTION = undefined;
+        if (controller1.userData.isSqueezing === true) {
+          tempMatrix.identity().extractRotation(controller1.matrixWorld);
+          raycaster.ray.origin.setFromMatrixPosition(controller1.matrixWorld);
+          raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+          const intersects = raycaster.intersectObjects(
+            teleportgroup.children,
+            true
+          );
+          if (intersects.length > 0) {
+            INTERSECTION = intersects[0].point;
+            console.log(intersects[0]);
+            console.log(INTERSECTION);
+          }
+        } else if (controller2.userData.isSqueezing === true) {
+          tempMatrix.identity().extractRotation(controller2.matrixWorld);
+          raycaster.ray.origin.setFromMatrixPosition(controller2.matrixWorld);
+          raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+          const intersects = raycaster.intersectObjects(
+            teleportgroup.children,
+            true
+          );
+          if (intersects.length > 0) {
+            INTERSECTION = intersects[0].point;
+          }
+        }
+        if (INTERSECTION) marker.position.copy(INTERSECTION);
+        marker.visible = INTERSECTION !== undefined;
+      }
+    </script>
+  </body>
 </html>
